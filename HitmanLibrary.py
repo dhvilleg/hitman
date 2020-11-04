@@ -1,10 +1,11 @@
 import re
 import pandas as pd
 import os
+import time
 
 GLOBAL_RESOURSE = "445759"
 HORCM_INSTANCE = "I910"
-VIRTUAL_VSP = "vdkc_445023"
+VIRTUAL_VSP = "vdkc_445106"
 
 def getListHostGroups():
     tableParser = pd.read_csv("hostGroupList.conf")
@@ -15,14 +16,13 @@ def getListOfPools():
     pool_file = open("pools.conf")
     for i in pool_file:
         print(i,end='')
-    
 
 def getFirstAviableLunPerPort(portId):
     my_list_of_luns = []
     aviable_list_of_luns = []
     for i in range(255):
         aviable_list_of_luns.append(i)
-    cmd = "cat {} | sed 's/O_B/O B/g'> luns.csv".format(portId)
+    cmd = "raidcom get lun -port {} -s {} -{} | sed 's/O_B/O B/g'> luns.csv".format(portId,GLOBAL_RESOURSE,HORCM_INSTANCE)
     os.system(cmd)
     tableParser = pd.read_csv("luns.csv",delimiter='\s+')
     tableParser.head()
@@ -30,7 +30,7 @@ def getFirstAviableLunPerPort(portId):
     tableParser
     my_list_of_luns = tableParser['LUN'].values.tolist()
     for e in range(len(my_list_of_luns)):
-        aviable_list_of_luns.remove(my_list_of_luns[e])                
+        aviable_list_of_luns.remove(my_list_of_luns[e])               
     return aviable_list_of_luns[0]
 
 def getAllAviableLunPerPort(portId):
@@ -38,7 +38,7 @@ def getAllAviableLunPerPort(portId):
     aviable_list_of_luns = []
     for i in range(255):
         aviable_list_of_luns.append(i)
-    cmd = "cat {} | sed 's/O_B/O B/g'> luns.csv".format(portId)
+    cmd = "raidcom get lun -port {} -s {} -{} | sed 's/O_B/O B/g'> luns.csv".format(portId,GLOBAL_RESOURSE,HORCM_INSTANCE)
     os.system(cmd)
     tableParser = pd.read_csv("luns.csv",delimiter='\s+')
     tableParser.head()
@@ -46,7 +46,7 @@ def getAllAviableLunPerPort(portId):
     tableParser
     my_list_of_luns = tableParser['LUN'].values.tolist()
     for e in range(len(my_list_of_luns)):
-        aviable_list_of_luns.remove(my_list_of_luns[e])                
+        aviable_list_of_luns.remove(my_list_of_luns[e])               
     return aviable_list_of_luns
 
 def getCUFromList(hostGroupVar):
@@ -64,7 +64,8 @@ def getLdevFromCU(cu_number):
     ldev_fin = cu_number+"FF"
     ldev_inicio = int(ldev_inicio,16)
     ldev_fin = int (ldev_fin,16)
-    print("raidcom get ldev -ldev_id {}-{} -s {} -{} -fx  | grep ""LDEV : "" | grep -v VIR_LDEV".format(ldev_inicio,ldev_fin,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom get ldev -ldev_id {}-{} -s {} -{} -fx  | grep \"LDEV : \" | grep -v VIR_LDEV > ldevList.tmp".format(ldev_inicio,ldev_fin,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
     ldev_file = open("ldevList.tmp")
     for i in ldev_file:
         my_list_of_ldev.append(i.split(" ")[-1].replace("\n","")[-2:])
@@ -76,7 +77,8 @@ def getFirstLdevFromCU(cu_number):
     ldev_fin = cu_number+"FF"
     ldev_inicio = int(ldev_inicio,16)
     ldev_fin = int (ldev_fin,16)
-    print("raidcom get ldev -ldev_id {}-{} -s {} -{} -fx  | grep ""LDEV : "" | grep -v VIR_LDEV".format(ldev_inicio,ldev_fin,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom get ldev -ldev_id {}-{} -s {} -{} -fx  | grep \"LDEV : \" | grep -v VIR_LDEV > ldevList.tmp".format(ldev_inicio,ldev_fin,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
     ldev_file = open("ldevList.tmp")
     for i in ldev_file:
         my_list_of_ldev.append(i.split(" ")[-1].replace("\n","")[-2:])
@@ -111,22 +113,34 @@ def getCuFromConfFile(hostGroupVar):
 
 def executeVolumeCreate(ldevId,ldevNumber,capacity,pool):
     print("raidcom add ldev -ldev_id {}:{} -capacity {}g -pool {} -s {} -{}".format(ldevId,ldevNumber,capacity,pool,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom add ldev -ldev_id {}:{} -capacity {}g -pool {} -s {} -{}".format(ldevId,ldevNumber,capacity,pool,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
+    time.sleep(2)
 
 def executeModifyLdev(ldevId,ldevNumber,ldevName):
     print("raidcom modify ldev -ldev_id {}:{} -ldev_name {} -s {} -{}".format(ldevId,ldevNumber,ldevName,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom modify ldev -ldev_id {}:{} -ldev_name {} -s {} -{}".format(ldevId,ldevNumber,ldevName,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
 
 def executeUnmapResource(ldevId,ldevNumber):
     print("raidcom unmap resource -ldev_id {}:{} -virtual_ldev_id {}:{} -s {} -{}".format(ldevId,ldevNumber,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom unmap resource -ldev_id {}:{} -virtual_ldev_id {}:{} -s {} -{}".format(ldevId,ldevNumber,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
 
 def executeAddResource(ldevId,ldevNumber):
     print("raidcom add resource -resource_name {} -ldev_id {}:{} -s {} -{}".format(VIRTUAL_VSP,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom add resource -resource_name {} -ldev_id {}:{} -s {} -{}".format(VIRTUAL_VSP,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
 
 def executeMapResource(ldevId,ldevNumber):
     print("raidcom map resource -ldev_id {}:{} -virtual_ldev_id {}:{} -s {} -{}".format(ldevId,ldevNumber,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE))
+    cmd = "raidcom map resource -ldev_id {}:{} -virtual_ldev_id {}:{} -s {} -{}".format(ldevId,ldevNumber,ldevId,ldevNumber,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
 
 def executeAddLun(portId,ldevId,ldevNumber,lun_id):
     print("raidcom add lun -port {} -ldev_id {}:{} -lun_id {} -s {} -{}".format(portId,ldevId,ldevNumber,lun_id,GLOBAL_RESOURSE,HORCM_INSTANCE))
-    
+    cmd = "raidcom add lun -port {} -ldev_id {}:{} -lun_id {} -s {} -{}".format(portId,ldevId,ldevNumber,lun_id,GLOBAL_RESOURSE,HORCM_INSTANCE)
+    os.system(cmd)
 
 #if __name__ == '__main__':
     #print(getListOfHostGroupsPorts("BDD_ENTERPRICE"))
