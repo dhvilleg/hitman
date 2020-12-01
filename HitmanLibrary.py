@@ -24,13 +24,17 @@ def getFirstAviableLunPerPort(portId):
         aviable_list_of_luns.append(i)
     cmd = "raidcom get lun -port {} -s {} -{} | sed 's/O_B/O B/g'> luns.csv".format(portId,GLOBAL_RESOURSE,HORCM_INSTANCE)
     os.system(cmd)
-    tableParser = pd.read_csv("luns.csv",delimiter='\s+')
-    tableParser.head()
-    tableParser.shape
-    tableParser
-    my_list_of_luns = tableParser['LUN'].values.tolist()
+    x = os.popen('cat /root/hitman/luns.csv | wc -l').read()
+    if x == "0\n":
+        aviable_list_of_luns.append(0)
+    else:
+        tableParser = pd.read_csv("/root/hitman/luns.csv",delimiter='\s+')
+        tableParser.head()
+        tableParser.shape
+        tableParser
+        my_list_of_luns = tableParser['LUN'].values.tolist()
     for e in range(len(my_list_of_luns)):
-        aviable_list_of_luns.remove(my_list_of_luns[e])               
+        aviable_list_of_luns.remove(my_list_of_luns[e])
     return aviable_list_of_luns[0]
 
 def getAllAviableLunPerPort(portId):
